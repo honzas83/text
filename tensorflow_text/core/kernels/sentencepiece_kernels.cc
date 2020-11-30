@@ -108,6 +108,9 @@ tensorflow::Status HandleExtraOptions(OpKernelContext* ctx,
   require_update |= reverse != sp->reverse;
   sp->reverse = reverse;
 
+  const Tensor* enable_sampling_tensor = nullptr;
+  TF_RETURN_IF_ERROR(ctx->input("enable_sampling", &enable_sampling_tensor));
+
   if (require_update) {
     string options("");
     bool first = true;
@@ -257,6 +260,8 @@ class SentencepieceTokenizeOp : public OpKernel {
     OP_REQUIRES_OK(ctx, ctx->input("nbest_size", &nbest_size_tensor));
     const Tensor* alpha_tensor = nullptr;
     OP_REQUIRES_OK(ctx, ctx->input("alpha", &alpha_tensor));
+    const Tensor* enable_sampling_tensor = nullptr;
+    OP_REQUIRES_OK(ctx, ctx->input("enable_sampling", &enable_sampling_tensor));
 
     OP_REQUIRES_OK(ctx, HandleExtraOptions(ctx, sp));
 
@@ -271,13 +276,14 @@ class SentencepieceTokenizeOp : public OpKernel {
         num_of_input_values,         // total number of data to process.
         kCostPerUnit,                // cost per unit
         [ctx, sp, &input_values_flat, &tokens, &nbest_size_tensor,
-         &alpha_tensor](int64 start, int64 limit) {
+         &alpha_tensor, &enable_sampling_tensor](int64 start, int64 limit) {
           absl::ReaderMutexLock lock(&sp->mu);
           for (int i = start; i < limit; ++i) {
             const int32 nbest_size = nbest_size_tensor->dims() == 1
                                          ? nbest_size_tensor->vec<int32>()(i)
                                          : nbest_size_tensor->scalar<int32>()();
-            if (nbest_size == 0 || nbest_size == 1) {
+	    bool enable_sampling = enable_sampling_tensor->scalar<bool>()();
+            if (!enable_sampling) {
               OP_REQUIRES_OK(ctx, ToTFStatus(sp->processor.Encode(
                                       input_values_flat(i), &tokens[i])));
             } else {
@@ -364,6 +370,8 @@ class SentencepieceTokenizeWithOffsetsOp : public OpKernel {
     OP_REQUIRES_OK(ctx, ctx->input("nbest_size", &nbest_size_tensor));
     const Tensor* alpha_tensor = nullptr;
     OP_REQUIRES_OK(ctx, ctx->input("alpha", &alpha_tensor));
+    const Tensor* enable_sampling_tensor = nullptr;
+    OP_REQUIRES_OK(ctx, ctx->input("enable_sampling", &enable_sampling_tensor));
 
     OP_REQUIRES_OK(ctx, HandleExtraOptions(ctx, sp));
 
@@ -376,13 +384,14 @@ class SentencepieceTokenizeWithOffsetsOp : public OpKernel {
         num_of_input_values,         // total number of data to process.
         kCostPerUnit,
         [ctx, sp, &input_values_flat, &results, &nbest_size_tensor,
-         &alpha_tensor](int64 start, int64 limit) {
+         &alpha_tensor, &enable_sampling_tensor](int64 start, int64 limit) {
           absl::ReaderMutexLock lock(&sp->mu);
           for (int i = start; i < limit; ++i) {
             const int32 nbest_size = nbest_size_tensor->dims() == 1
                                          ? nbest_size_tensor->vec<int32>()(i)
                                          : nbest_size_tensor->scalar<int32>()();
-            if (nbest_size == 0 || nbest_size == 1) {
+	    bool enable_sampling = enable_sampling_tensor->scalar<bool>()();
+            if (!enable_sampling) {
               OP_REQUIRES_OK(ctx, ToTFStatus(sp->processor.Encode(
                                       input_values_flat(i), &results[i])));
             } else {

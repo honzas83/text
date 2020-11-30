@@ -65,6 +65,7 @@ class SentencepieceTokenizer(TokenizerWithOffsets, Detokenizer):
                reverse=False,
                add_bos=False,
                add_eos=False,
+               enable_sampling=False,
                name=None):
     """Creates & initializes a Sentencepiece processor.
 
@@ -97,6 +98,7 @@ class SentencepieceTokenizer(TokenizerWithOffsets, Detokenizer):
     self.reverse = reverse
     self.add_bos = add_bos
     self.add_eos = add_eos
+    self.enable_sampling = enable_sampling
     self._model_resource = _SentencepieceModelResource(model, name)
 
   def tokenize(self, input, name=None):  # pylint: disable=redefined-builtin
@@ -132,7 +134,7 @@ class SentencepieceTokenizer(TokenizerWithOffsets, Detokenizer):
               gen_sentencepiece_tokenizer.sentencepiece_tokenize_op(
                   self._model_resource.resource_handle, input_tensor,
                   self.nbest_size, self.alpha, self.add_bos, self.add_eos,
-                  self.reverse, self.out_type))
+                  self.reverse, self.enable_sampling, self.out_type))
           tokens = RaggedTensor.from_nested_row_splits(
               flat_values=output_values,
               nested_row_splits=[row_splits],
@@ -191,7 +193,7 @@ class SentencepieceTokenizer(TokenizerWithOffsets, Detokenizer):
                .sentencepiece_tokenize_with_offsets_op(
                    self._model_resource.resource_handle, input_tensor,
                    self.nbest_size, self.alpha, self.add_bos, self.add_eos,
-                   self.reverse, self.out_type))
+                   self.reverse, self.enable_sampling, self.out_type))
           tokens = RaggedTensor.from_nested_row_splits(
               flat_values=output_values,
               nested_row_splits=[output_splits],
