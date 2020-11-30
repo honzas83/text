@@ -15,5 +15,5 @@ fi
 ./oss_scripts/configure.sh
 
 # Build the pip package.
-bazel build oss_scripts/pip_package:build_pip_package
+bazel build oss_scripts/pip_package:build_pip_package --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=0" 
 ./bazel-bin/oss_scripts/pip_package/build_pip_package .
